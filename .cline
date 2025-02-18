@@ -1,11 +1,11 @@
 # SecurePay MCP Server
 
-1. Initial Setup
+Phase 1. Initial Setup
 - Create new TypeScript MCP server project 
 - Set up basic server structure and configuration
 - Implement environment variable handling for SecurePay credentials
 
-2. SecurePay Integration  
+Phase 2. SecurePay Integration  
 - Implement API client for credit card processing
 - Focus on essential endpoints:
   * Payment initialization
@@ -14,7 +14,7 @@
 - Implement request/response builders
 - Add error handling for API responses
 
-3. MCP Tools
+Phase 3. MCP Tools
 - process_payment
 - check_transaction  
 - get_transaction_history
