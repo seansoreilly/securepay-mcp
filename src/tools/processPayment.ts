@@ -9,6 +9,8 @@ const config: SecurePayConfig = {
   merchantId: process.env.SECUREPAY_MERCHANT_ID || '',
   apiPassword: process.env.SECUREPAY_API_PASSWORD || '',
   baseUrl: process.env.SECUREPAY_BASE_URL || '',
+  clientId: process.env.SECUREPAY_CLIENT_ID || '',
+  clientSecret: process.env.SECUREPAY_CLIENT_SECRET || '',
 };
 
 const client = new SecurePayClient(config);

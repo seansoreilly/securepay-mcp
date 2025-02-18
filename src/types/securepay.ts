@@ -2,6 +2,8 @@ export interface SecurePayConfig {
   merchantId: string;
   apiPassword: string;
   baseUrl: string;
+  clientId: string;
+  clientSecret: string;
 }
 
 export type PaymentPayload = {
@@ -11,4 +13,31 @@ export type PaymentPayload = {
   expiryYear: string;
   cvv: string;
   currency?: 'AUD' | 'NZD';
-}; 
+};
+
+export interface ISecurePayClient {
+  checkTransaction(transactionId: string): Promise<TransactionResponse>;
+  getTransactionHistory(
+    startDate: Date,
+    endDate: Date,
+    page?: number,
+    pageSize?: number
+  ): Promise<TransactionHistoryResponse>;
+}
+
+export interface TransactionResponse {
+  id: string;
+  status: 'SUCCESS' | 'FAILED' | 'PENDING';
+  amount: number;
+  currency: string;
+  transactionDate: Date;
+  merchantReference?: string;
+  errorCode?: string;
+}
+
+export interface TransactionHistoryResponse {
+  transactions: TransactionResponse[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
