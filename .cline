@@ -1,20 +1,47 @@
 # SecurePay MCP Server
 
-Phase 1. Initial Setup
-- Create new TypeScript MCP server project 
+# Background research
+
+Understand this by using mcp brave-web-search
+
+## SecurePay API Documentation (https://auspost.com.au/payments/docs/securepay/?javascript):
+
+This is the official documentation for SecurePay's XML API
+Contains critical information about:
+API endpoints and request structure
+Supported payment types and currencies
+Error codes and response handling
+Security requirements and PCI compliance
+
+## Model Context Protocol Servers (https://github.com/modelcontextprotocol/servers):
+
+Reference implementation for MCP servers
+Contains examples of:
+Tool definition patterns
+Input validation approaches
+Error handling structures
+API response formatting
+
+## Phases
+
+### Phase 1. Initial Setup
+
+- Create new TypeScript MCP server project
 - Set up basic server structure and configuration
 - Implement environment variable handling for SecurePay credentials
 
-Phase 2. SecurePay Integration  
+### Phase 2. SecurePay Integration
+
 - Implement API client for credit card processing
 - Focus on essential endpoints:
-  * Payment initialization
-  * Payment processing 
-  * Transaction status checking
+  - Payment initialization
+  - Payment processing
+  - Transaction status checking
 - Implement request/response builders
 - Add error handling for API responses
 
-Phase 3. MCP Tools
+### Phase 3. MCP Tools
+
 - process_payment
-- check_transaction  
+- check_transaction
 - get_transaction_history
