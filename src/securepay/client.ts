@@ -51,103 +51,143 @@ interface BillingDetails {
 
 export class SecurePayClient {
   private client: AxiosInstance;
-  private accessToken: string | null = null;
-  private tokenExpiry: number | null = null;
-  private oauthUrl = process.env.SECUREPAY_OAUTH_URL;
+  private merchantId = process.env.SECUREPAY_MERCHANT_ID;
+  private merchantPassword = process.env.SECUREPAY_PASSWORD;
   private baseUrl = process.env.SECUREPAY_SANDBOX_URL;
 
   constructor() {
+    if (!this.merchantId || !this.merchantPassword || !this.baseUrl) {
+      throw new Error('Missing required environment variables');
+    }
+
     this.client = axios.create({
-      baseURL: this.baseUrl
-    });
-    this.client.interceptors.request.use(config => {
-      if (this.accessToken) {
-        config.headers['Authorization'] = `Bearer ${this.accessToken}`;
+      baseURL: this.baseUrl,
+      headers: {
+        'Content-Type': 'application/vnd.securepay+xml'
       }
-      return config;
-    }, error => {
-      return Promise.reject(error);
     });
-  }
-
-  private async getAccessToken(): Promise<void> {
-    const clientId = process.env.SECUREPAY_CLIENT_ID;
-    const clientSecret = process.env.SECUREPAY_CLIENT_SECRET;
-
-    if (!clientId || !clientSecret || !this.oauthUrl) {
-      throw new Error('Missing OAuth credentials');
-    }
-
-    if (!this.accessToken || !this.tokenExpiry || Date.now() >= this.tokenExpiry) {
-      console.warn('Access token missing or expired. Fetching a new one...');
-    }
-
-    try {
-      const response = await axios.post(this.oauthUrl, null, {
-        params: {
-          grant_type: 'client_credentials',
-          audience: process.env.SECUREPAY_SANDBOX_URL
-        },
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': `${clientId} ${clientSecret}`
-        }
-      });
-
-      this.accessToken = response.data.access_token;
-      this.tokenExpiry = Date.now() + (response.data.expires_in * 1000);
-      console.log(`New access token obtained. Expires at: ${new Date(this.tokenExpiry).toISOString()}`);
-    } catch (error) {
-      console.error('Failed to obtain access token:', error);
-      throw error;
-    }
   }
 
   private handleError(error: AxiosError<SecurePayErrorResponse>) {
-    if (error.response && error.response.data.error_code) {
+    if (error.response?.data?.error_code) {
       const errorCode = error.response.data.error_code;
       const errorMessage = ERROR_MESSAGES[errorCode as SecurePayErrorCodes] || 'Unknown Error';
       throw new Error(`SecurePay API Error ${errorCode}: ${errorMessage}`);
     } else {
+      console.error('API Error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        headers: error.response?.headers
+      });
       throw new Error(`SecurePay API Error: ${error.message}`);
     }
   }
 
   async initPayment(amount: number, currency: string) {
-    await this.getAccessToken();
     try {
-      const response = await this.client.post('/xmlapi/payment', {
-        amount,
+      const amountInCents = Math.round(amount * 100).toString();
+      const messageId = Date.now().toString();
+      
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<SecurePayMessage>
+  <MessageInfo>
+    <messageID>${messageId}</messageID>
+    <messageTimestamp>${new Date().toISOString()}</messageTimestamp>
+    <timeoutValue>60</timeoutValue>
+    <apiVersion>xml-4.2</apiVersion>
+  </MessageInfo>
+  <MerchantInfo>
+    <merchantID>${this.merchantId}</merchantID>
+    <password>${this.merchantPassword}</password>
+  </MerchantInfo>
+  <RequestType>Payment</RequestType>
+  <Payment>
+    <TxnList count="1">
+      <Txn ID="1">
+        <txnType>0</txnType>
+        <txnSource>23</txnSource>
+        <amount>${amountInCents}</amount>
+        <currency>${currency}</currency>
+        <purchaseOrderNo>ORDER-${messageId}</purchaseOrderNo>
+      </Txn>
+    </TxnList>
+  </Payment>
+</SecurePayMessage>`;
+
+      console.log('Sending payment initialization request:', {
+        messageId,
+        amount: amountInCents,
         currency
       });
 
-      return response.data;
+      const response = await this.client.put(`/xmlapi/payment/${messageId}`, xml, {
+        headers: {
+          'X-Message-Id': messageId
+        }
+      });
+
+      console.log('Payment initialized:', response.data);
+      return { messageId, ...response.data };
     } catch (error) {
       this.handleError(error as AxiosError<SecurePayErrorResponse>);
     }
   }
 
-  async processPayment(paymentId: string, card: CreditCard, billingDetails: BillingDetails) {
-    await this.getAccessToken();
+  async processPayment(messageId: string, card: CreditCard, billingDetails: BillingDetails) {
     try {
-      const response = await this.client.post(`/xmlapi/payment/${paymentId}/process`, {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<SecurePayMessage>
+  <MessageInfo>
+    <messageID>${messageId}</messageID>
+    <messageTimestamp>${new Date().toISOString()}</messageTimestamp>
+    <timeoutValue>60</timeoutValue>
+    <apiVersion>xml-4.2</apiVersion>
+  </MessageInfo>
+  <MerchantInfo>
+    <merchantID>${this.merchantId}</merchantID>
+    <password>${this.merchantPassword}</password>
+  </MerchantInfo>
+  <RequestType>Payment</RequestType>
+  <Payment>
+    <TxnList count="1">
+      <Txn ID="1">
+        <txnType>0</txnType>
+        <txnSource>23</txnSource>
+        <creditCard>
+          <number>${card.number}</number>
+          <expiryDate>${card.expiryMonth}/${card.expiryYear}</expiryDate>
+          <securityCode>${card.cvv}</securityCode>
+        </creditCard>
+        <billing>
+          <firstName>${billingDetails.name.split(' ')[0]}</firstName>
+          <lastName>${billingDetails.name.split(' ').slice(1).join(' ')}</lastName>
+          <street1>${billingDetails.street1}</street1>
+          ${billingDetails.street2 ? `<street2>${billingDetails.street2}</street2>` : ''}
+          <city>${billingDetails.city}</city>
+          <state>${billingDetails.state}</state>
+          <postalCode>${billingDetails.postalCode}</postalCode>
+          <country>${billingDetails.country}</country>
+        </billing>
+      </Txn>
+    </TxnList>
+  </Payment>
+</SecurePayMessage>`;
+
+      console.log('Sending payment process request:', {
+        messageId,
         card: {
-          number: card.number,
-          expiryMonth: card.expiryMonth,
-          expiryYear: card.expiryYear,
-          cvv: card.cvv
-        },
-        billingDetails: {
-          name: billingDetails.name,
-          street1: billingDetails.street1,
-          street2: billingDetails.street2,
-          city: billingDetails.city,
-          state: billingDetails.state,
-          postalCode: billingDetails.postalCode,
-          country: billingDetails.country
+          ...card,
+          number: `${card.number.slice(0, 4)}...${card.number.slice(-4)}`
         }
       });
 
+      const response = await this.client.put(`/xmlapi/payment/${messageId}/process`, xml, {
+        headers: {
+          'X-Message-Id': messageId
+        }
+      });
+
+      console.log('Payment processed:', response.data);
       return response.data;
     } catch (error) {
       this.handleError(error as AxiosError<SecurePayErrorResponse>);
