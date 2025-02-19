@@ -2,9 +2,7 @@ import { z } from 'zod';
 import dotenv from 'dotenv';
 import path from 'path';
 
-console.log('Loading environment from:', path.resolve(process.cwd(), '.env'));
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-console.log('Environment variables loaded:', Object.keys(process.env).filter(k => k.startsWith('SECUREPAY')));
 
 export const environmentSchema = z.object({
   SECUREPAY_MERCHANT_ID: z.string().min(7),
