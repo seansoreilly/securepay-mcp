@@ -1,4 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { ISecurePayClient, SecurePayConfig, TransactionResponse, TransactionHistoryResponse } from '../types/securepay';
+import { buildPaymentXml } from '../lib/xmlBuilder';
 
 interface SecurePayErrorResponse {
   error_code: string;
@@ -49,19 +51,14 @@ interface BillingDetails {
   country: string;
 }
 
-export class SecurePayClient {
+export class SecurePayClient implements ISecurePayClient {
   private client: AxiosInstance;
-  private merchantId = process.env.SECUREPAY_MERCHANT_ID;
-  private merchantPassword = process.env.SECUREPAY_API_PASSWORD;
-  private baseUrl = process.env.SECUREPAY_SANDBOX_URL;
+  private config: SecurePayConfig;
 
-  constructor() {
-    if (!this.merchantId || !this.merchantPassword || !this.baseUrl) {
-      throw new Error('Missing required environment variables');
-    }
-
+  constructor(config: SecurePayConfig) {
+    this.config = config;
     this.client = axios.create({
-      baseURL: this.baseUrl,
+      baseURL: config.baseUrl,
       headers: {
         'Content-Type': 'application/vnd.securepay+xml'
       }
@@ -83,40 +80,72 @@ export class SecurePayClient {
     }
   }
 
+  async checkTransaction(transactionId: string): Promise<TransactionResponse> {
+    try {
+      const response = await this.client.get(`/xmlapi/payment/${transactionId}`);
+      return this.parseTransactionResponse(response.data);
+    } catch (error) {
+      this.handleError(error as AxiosError<SecurePayErrorResponse>);
+      throw error; // TypeScript needs this even though handleError always throws
+    }
+  }
+
+  async getTransactionHistory(
+    startDate: Date,
+    endDate: Date,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<TransactionHistoryResponse> {
+    try {
+      const response = await this.client.get('/xmlapi/reporting/transactions', {
+        params: {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          page,
+          pageSize
+        }
+      });
+      
+      return {
+        transactions: response.data.transactions.map(this.parseTransactionResponse),
+        page,
+        pageSize,
+        total: response.data.total
+      };
+    } catch (error) {
+      this.handleError(error as AxiosError<SecurePayErrorResponse>);
+      throw error;
+    }
+  }
+
+  private parseTransactionResponse(data: any): TransactionResponse {
+    return {
+      id: data.transactionId,
+      status: data.status,
+      amount: parseInt(data.amount) / 100,
+      currency: data.currency,
+      transactionDate: new Date(data.timestamp),
+      merchantReference: data.merchantReference,
+      errorCode: data.errorCode
+    };
+  }
+
   async initPayment(amount: number, currency: string) {
     try {
-      const amountInCents = Math.round(amount * 100).toString();
       const messageId = Date.now().toString();
-      
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<SecurePayMessage>
-  <MessageInfo>
-    <messageID>${messageId}</messageID>
-    <messageTimestamp>${new Date().toISOString()}</messageTimestamp>
-    <timeoutValue>60</timeoutValue>
-    <apiVersion>xml-4.2</apiVersion>
-  </MessageInfo>
-  <MerchantInfo>
-    <merchantID>${this.merchantId}</merchantID>
-    <password>${this.merchantPassword}</password>
-  </MerchantInfo>
-  <RequestType>Payment</RequestType>
-  <Payment>
-    <TxnList count="1">
-      <Txn ID="1">
-        <txnType>0</txnType>
-        <txnSource>23</txnSource>
-        <amount>${amountInCents}</amount>
-        <currency>${currency}</currency>
-        <purchaseOrderNo>ORDER-${messageId}</purchaseOrderNo>
-      </Txn>
-    </TxnList>
-  </Payment>
-</SecurePayMessage>`;
+      const xml = buildPaymentXml({
+        amount,
+        currency: currency as 'AUD' | 'NZD',
+        orderId: `ORDER-${messageId}`,
+        cardNumber: '', // These will be filled in processPayment
+        expiryMonth: '',
+        expiryYear: '',
+        cvv: ''
+      }, this.config);
 
       console.log('Sending payment initialization request:', {
         messageId,
-        amount: amountInCents,
+        amount: Math.round(amount * 100),
         currency
       });
 
@@ -135,47 +164,15 @@ export class SecurePayClient {
 
   async processPayment(messageId: string, amount: number, currency: string, card: CreditCard, billingDetails: BillingDetails) {
     try {
-      const amountInCents = Math.round(amount * 100).toString();
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<SecurePayMessage>
-  <MessageInfo>
-    <messageID>${messageId}</messageID>
-    <messageTimestamp>${new Date().toISOString()}</messageTimestamp>
-    <timeoutValue>60</timeoutValue>
-    <apiVersion>xml-4.2</apiVersion>
-  </MessageInfo>
-  <MerchantInfo>
-    <merchantID>${this.merchantId}</merchantID>
-    <password>${this.merchantPassword}</password>
-  </MerchantInfo>
-  <RequestType>Payment</RequestType>
-  <Payment>
-    <TxnList count="1">
-      <Txn ID="1">
-        <txnType>0</txnType>
-        <txnSource>23</txnSource>
-        <amount>${amountInCents}</amount>
-        <currency>${currency}</currency>
-        <purchaseOrderNo>ORDER-${messageId}</purchaseOrderNo>
-        <CreditCardInfo>
-          <cardNumber>${card.number}</cardNumber>
-          <expiryDate>${card.expiryMonth}/${card.expiryYear}</expiryDate>
-          <cvv>${card.cvv}</cvv>
-        </CreditCardInfo>
-        <billing>
-          <firstName>${billingDetails.name.split(' ')[0]}</firstName>
-          <lastName>${billingDetails.name.split(' ').slice(1).join(' ')}</lastName>
-          <street1>${billingDetails.street1}</street1>
-          ${billingDetails.street2 ? `<street2>${billingDetails.street2}</street2>` : ''}
-          <city>${billingDetails.city}</city>
-          <state>${billingDetails.state}</state>
-          <postalCode>${billingDetails.postalCode}</postalCode>
-          <country>${billingDetails.country}</country>
-        </billing>
-      </Txn>
-    </TxnList>
-  </Payment>
-</SecurePayMessage>`;
+      const xml = buildPaymentXml({
+        amount,
+        currency: currency as 'AUD' | 'NZD',
+        orderId: `ORDER-${messageId}`,
+        cardNumber: card.number,
+        expiryMonth: card.expiryMonth,
+        expiryYear: card.expiryYear,
+        cvv: card.cvv
+      }, this.config);
 
       console.log('Sending payment process request:', {
         messageId,

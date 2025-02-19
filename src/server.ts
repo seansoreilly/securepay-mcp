@@ -1,13 +1,18 @@
-import * as dotenv from 'dotenv';
-dotenv.config();
-
 import { SecurePayClient } from './securepay/client';
+import { env } from './env';
 
 export class Server {
   private client: SecurePayClient;
 
   constructor() {
-    this.client = new SecurePayClient();
+    this.client = new SecurePayClient({
+      merchantId: env.SECUREPAY_MERCHANT_ID,
+      apiPassword: env.SECUREPAY_API_PASSWORD,
+      baseUrl: env.SECUREPAY_SANDBOX_URL,
+      clientId: '', // Not used in XML API
+      clientSecret: '', // Not used in XML API
+      timeout: 60
+    });
   }
 
   async processPayment(amount: number, currency: string) {

@@ -10,8 +10,16 @@ import {
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 import { SecurePayClient } from './securepay/client';
+import { env } from './env';
 
-const client = new SecurePayClient();
+const client = new SecurePayClient({
+  merchantId: env.SECUREPAY_MERCHANT_ID,
+  apiPassword: env.SECUREPAY_API_PASSWORD,
+  baseUrl: env.SECUREPAY_SANDBOX_URL,
+  clientId: '', // Not used in XML API
+  clientSecret: '', // Not used in XML API
+  timeout: 60
+});
 
 const isValidProcessPaymentArgs = (args: any): args is {
   paymentId: string;
@@ -207,8 +215,14 @@ class SecurePayMcpServer {
         }
 
         try {
+          // First initialize the payment
+          const { messageId } = await client.initPayment(10.00, 'AUD'); // Default amount for testing
+
+          // Then process it with the provided details
           const paymentResponse = await client.processPayment(
-            request.params.arguments.paymentId,
+            messageId,
+            10.00, // Default amount for testing
+            'AUD',
             request.params.arguments.card,
             request.params.arguments.billingDetails
           );
