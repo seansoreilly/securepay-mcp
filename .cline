@@ -1,47 +1,46 @@
-# SecurePay MCP Server
+Learnings from SecurePay MCP Integration:
 
-# Background research
+1. Authentication Flow:
+- Uses OAuth 2.0 with client credentials flow
+- OAuth endpoint: https://welcome.api2.sandbox.auspost.com.au/oauth/token
+- Required grant_type=client_credentials and audience=https://api.payments.auspost.com.au
+- Access tokens valid for 24 hours (86400 seconds)
+- Basic auth header must be correctly base64 encoded
 
-Understand this by using mcp brave-web-search
+2. API Endpoints:
+- Sandbox base URL: https://payments-stest.npe.auspost.zone
+- Payment endpoints use XML API (/xmlapi/payment)
+- Must use PUT method instead of POST for payment requests
+- Content-Type should be application/vnd.securepay+xml
 
-## SecurePay API Documentation (https://auspost.com.au/payments/docs/securepay/?javascript):
+3. Payment Flow:
+- Two-step process: initialize payment then process with card details
+- Message ID used to track the payment through the flow
+- Amounts must be in cents (multiply by 100)
+- XML payloads require specific format:
+  - SecurePayMessage wrapper
+  - MessageInfo with ID and timestamp
+  - MerchantInfo with credentials
+  - Payment section with TxnList
 
-This is the official documentation for SecurePay's XML API
-Contains critical information about:
-API endpoints and request structure
-Supported payment types and currencies
-Error codes and response handling
-Security requirements and PCI compliance
+4. Common Issues:
+- Method Not Allowed (405) when using POST instead of PUT
+- Access Denied (403) when authorization header missing
+- Invalid Argument for incorrect auth formatting
+- XML format must be exact and well-formed
 
-## Model Context Protocol Servers (https://github.com/modelcontextprotocol/servers):
+5. Required Fields:
+- messageID: unique identifier (using timestamp)
+- messageTimestamp: ISO format
+- apiVersion: xml-4.2
+- txnType: 0 for payment
+- txnSource: 23 for API
 
-Reference implementation for MCP servers
-Contains examples of:
-Tool definition patterns
-Input validation approaches
-Error handling structures
-API response formatting
-
-## Phases
-
-### Phase 1. Initial Setup
-
-- Create new TypeScript MCP server project
-- Set up basic server structure and configuration
-- Implement environment variable handling for SecurePay credentials
-
-### Phase 2. SecurePay Integration
-
-- Implement API client for credit card processing
-- Focus on essential endpoints:
-  - Payment initialization
-  - Payment processing
-  - Transaction status checking
-- Implement request/response builders
-- Add error handling for API responses
-
-### Phase 3. MCP Tools
-
-- process_payment
-- check_transaction
-- get_transaction_history
+6. Environment Variables:
+SECUREPAY_MERCHANT_ID=5AR0055
+SECUREPAY_MERCHANT_CODE=5AR0055
+SECUREPAY_PASSWORD=[client_id:client_secret]
+SECUREPAY_SANDBOX_URL=https://payments-stest.npe.auspost.zone
+SECUREPAY_OAUTH_URL=https://welcome.api2.sandbox.auspost.com.au/oauth/token
+SECUREPAY_CLIENT_ID=[your-client-id]
+SECUREPAY_CLIENT_SECRET=[your-client-secret]
