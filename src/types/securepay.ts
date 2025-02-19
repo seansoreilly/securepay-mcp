@@ -4,6 +4,7 @@ export interface SecurePayConfig {
   baseUrl: string;
   clientId: string;
   clientSecret: string;
+  timeout?: number;
 }
 
 export type PaymentPayload = {
@@ -13,6 +14,7 @@ export type PaymentPayload = {
   expiryYear: string;
   cvv: string;
   currency?: 'AUD' | 'NZD';
+  orderId: string;
 };
 
 export interface ISecurePayClient {

@@ -52,7 +52,7 @@ interface BillingDetails {
 export class SecurePayClient {
   private client: AxiosInstance;
   private merchantId = process.env.SECUREPAY_MERCHANT_ID;
-  private merchantPassword = process.env.SECUREPAY_PASSWORD;
+  private merchantPassword = process.env.SECUREPAY_API_PASSWORD;
   private baseUrl = process.env.SECUREPAY_SANDBOX_URL;
 
   constructor() {
@@ -120,7 +120,7 @@ export class SecurePayClient {
         currency
       });
 
-      const response = await this.client.put(`/xmlapi/payment/${messageId}`, xml, {
+      const response = await this.client.put(`/xmlapi/payment`, xml, {
         headers: {
           'X-Message-Id': messageId
         }
@@ -133,8 +133,9 @@ export class SecurePayClient {
     }
   }
 
-  async processPayment(messageId: string, card: CreditCard, billingDetails: BillingDetails) {
+  async processPayment(messageId: string, amount: number, currency: string, card: CreditCard, billingDetails: BillingDetails) {
     try {
+      const amountInCents = Math.round(amount * 100).toString();
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <SecurePayMessage>
   <MessageInfo>
@@ -153,11 +154,14 @@ export class SecurePayClient {
       <Txn ID="1">
         <txnType>0</txnType>
         <txnSource>23</txnSource>
-        <creditCard>
-          <number>${card.number}</number>
+        <amount>${amountInCents}</amount>
+        <currency>${currency}</currency>
+        <purchaseOrderNo>ORDER-${messageId}</purchaseOrderNo>
+        <CreditCardInfo>
+          <cardNumber>${card.number}</cardNumber>
           <expiryDate>${card.expiryMonth}/${card.expiryYear}</expiryDate>
-          <securityCode>${card.cvv}</securityCode>
-        </creditCard>
+          <cvv>${card.cvv}</cvv>
+        </CreditCardInfo>
         <billing>
           <firstName>${billingDetails.name.split(' ')[0]}</firstName>
           <lastName>${billingDetails.name.split(' ').slice(1).join(' ')}</lastName>
@@ -181,7 +185,7 @@ export class SecurePayClient {
         }
       });
 
-      const response = await this.client.put(`/xmlapi/payment/${messageId}/process`, xml, {
+      const response = await this.client.put(`/xmlapi/payment`, xml, {
         headers: {
           'X-Message-Id': messageId
         }

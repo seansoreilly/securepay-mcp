@@ -1,11 +1,25 @@
 import { z } from 'zod';
+import dotenv from 'dotenv';
+import path from 'path';
+
+console.log('Loading environment from:', path.resolve(process.cwd(), '.env'));
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+console.log('Environment variables loaded:', Object.keys(process.env).filter(k => k.startsWith('SECUREPAY')));
 
 export const environmentSchema = z.object({
   SECUREPAY_MERCHANT_ID: z.string().min(8),
   SECUREPAY_API_PASSWORD: z.string().min(12),
+  SECUREPAY_SANDBOX_URL: z.string().url(),
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development')
 });
 
 export type Environment = z.infer<typeof environmentSchema>;
-export const env = environmentSchema.parse(process.env); 
+const envResult = environmentSchema.safeParse(process.env);
+
+if (!envResult.success) {
+  console.error('❌ Invalid environment variables:', envResult.error.format());
+  process.exit(1);
+}
+
+export const env = envResult.data;

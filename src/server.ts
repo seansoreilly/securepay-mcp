@@ -34,7 +34,7 @@ export class Server {
         country: 'AU'
       };
 
-      const result = await this.client.processPayment(messageId, card, billingDetails);
+      const result = await this.client.processPayment(messageId, amount, currency, card, billingDetails);
       console.log('Payment completed:', result);
       return result;
     } catch (error) {
