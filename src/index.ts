@@ -159,42 +159,6 @@ class SecurePayMcpServer {
             required: ['paymentId', 'card', 'billingDetails'],
           },
         },
-        {
-          name: 'check_transaction',
-          description: 'Check the status of a transaction',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              transactionId: {
-                type: 'string',
-                description: 'Transaction ID',
-              },
-            },
-            required: ['transactionId'],
-          },
-        },
-        {
-          name: 'get_transaction_history',
-          description: 'Get the transaction history for a merchant',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              merchantId: {
-                type: 'string',
-                description: 'Merchant ID',
-              },
-              startDate: {
-                type: 'string',
-                description: 'Start date (YYYY-MM-DD)',
-              },
-              endDate: {
-                type: 'string',
-                description: 'End date (YYYY-MM-DD)',
-              },
-            },
-            required: ['merchantId', 'startDate', 'endDate'],
-          },
-        },
       ],
     }));
 
