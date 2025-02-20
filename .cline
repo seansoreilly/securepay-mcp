@@ -1,1 +1,57 @@
-TBC
+# Refund Processing
+
+*Objective*: Enable the MCP server to process full or partial refunds for previously settled transactions.
+
+**Implementation Steps**:
+
+1. **Understand Refund Requirements**:
+   - Review the Secure XML API Integration Guide to comprehend the refund process and necessary parameters. [Secure XML API Integration Guide](https://auspost.com.au/payments/docs/securepay/resources/Secure_XML_API_Integration_Guide_1.10.pdf)
+
+2. **Develop Refund Request Functionality**:
+   - Create a function to generate XML requests for refunds, including:
+     - **Transaction Reference**: Unique identifier of the original transaction.
+     - **Refund Amount**: Specify the amount to refund (full or partial).
+     - **Merchant Details**: Include merchant ID and authentication credentials.
+
+3. **Integrate with SecurePay API**:
+   - Configure the MCP server to send refund requests to SecurePay's test endpoint:
+     - **Test Environment**: `https://test.api.securepay.com.au/xmlapi/payment`
+
+4. **Handle API Responses**:
+   - Parse responses to determine the success or failure of refund requests.
+   - Implement logging for transaction records and error handling.
+
+5. **Testing**:
+   - Utilize SecurePay's sandbox environment to test refund scenarios before deploying to production. [SecurePay Sandbox Environment](https://auspost.com.au/payments/docs/securepay/)
+
+---
+
+# Preauthorization Transactions
+
+*Objective*: Allow the MCP server to reserve funds on a customer's credit card without immediate capture, facilitating scenarios like booking or order fulfillment.
+
+**Implementation Steps**:
+
+1. **Understand Preauthorization Workflow**:
+   - Study the Secure XML API Integration Guide to grasp the preauthorization process, including initial authorization, completion, and potential cancellations. [Secure XML API Integration Guide](https://auspost.com.au/payments/docs/securepay/resources/Secure_XML_API_Integration_Guide_1.10.pdf)
+
+2. **Develop Preauthorization Request Functionality**:
+   - Implement a function to create XML requests for preauthorization, encompassing:
+     - **Transaction Details**: Amount to be reserved, currency, and transaction reference.
+     - **Card Information**: Customer's credit card details.
+     - **Merchant Credentials**: Merchant ID and authentication data.
+
+3. **Implement Preauthorization Completion**:
+   - Develop functionality to capture reserved funds once the transaction is ready for settlement.
+   - Ensure the completion request references the initial preauthorization transaction.
+
+4. **Integrate with SecurePay API**:
+   - Set up the MCP server to communicate with SecurePay's test endpoint for preauthorization and completion:
+     - **Test Environment**: `https://test.api.securepay.com.au/xmlapi/payment`
+
+5. **Handle API Responses**:
+   - Process responses to confirm successful preauthorization and subsequent capture.
+   - Log all transactions and handle errors appropriately.
+
+6. **Testing**:
+   - Use SecurePay's sandbox environment to simulate preauthorization scenarios, ensuring the MCP server handles various outcomes correctly. [SecurePay Sandbox Environment](https://auspost.com.au/payments/docs/securepay/)
