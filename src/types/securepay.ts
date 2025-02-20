@@ -17,7 +17,16 @@ export type PaymentPayload = {
   orderId: string;
 };
 
+export type RefundPayload = {
+  amount: number;
+  transactionId: string;
+  currency?: 'AUD' | 'NZD';
+  orderId: string;
+};
+
 export interface ISecurePayClient {
+  processPayment(payload: PaymentPayload): Promise<string>;
+  processRefund(payload: RefundPayload): Promise<string>;
   checkTransaction(transactionId: string): Promise<TransactionResponse>;
   getTransactionHistory(
     startDate: Date,

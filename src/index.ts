@@ -9,7 +9,7 @@ import {
   ListToolsRequestSchema,
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
-import { SecurePayClient } from './securepay/client';
+import { SecurePayClient } from './lib/securepay/client';
 import { env } from './env';
 
 const client = new SecurePayClient({
@@ -56,6 +56,20 @@ const isValidProcessPaymentArgs = (args: any): args is {
     typeof args.billingDetails.state === 'string' &&
     typeof args.billingDetails.postalCode === 'string' &&
     typeof args.billingDetails.country === 'string';
+};
+
+const isValidProcessRefundArgs = (args: any): args is {
+  transactionId: string;
+  amount: number;
+  currency?: 'AUD' | 'NZD';
+  orderId: string;
+} => {
+  return typeof args === 'object' &&
+    args !== null &&
+    typeof args.transactionId === 'string' &&
+    typeof args.amount === 'number' &&
+    typeof args.orderId === 'string' &&
+    (args.currency === undefined || args.currency === 'AUD' || args.currency === 'NZD');
 };
 
 class SecurePayMcpServer {
@@ -159,11 +173,38 @@ class SecurePayMcpServer {
             required: ['paymentId', 'card', 'billingDetails'],
           },
         },
+        {
+          name: 'process_refund',
+          description: 'Process a refund for a previously settled transaction',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              transactionId: {
+                type: 'string',
+                description: 'Original transaction ID to refund',
+              },
+              amount: {
+                type: 'number',
+                description: 'Amount to refund',
+              },
+              currency: {
+                type: 'string',
+                enum: ['AUD', 'NZD'],
+                description: 'Currency code',
+              },
+              orderId: {
+                type: 'string',
+                description: 'Order ID for the refund',
+              }
+            },
+            required: ['transactionId', 'amount', 'orderId'],
+          },
+        },
       ],
     }));
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      if (request.params.name !== 'process_payment' && request.params.name !== 'check_transaction' && request.params.name !== 'get_transaction_history') {
+      if (request.params.name !== 'process_payment' && request.params.name !== 'process_refund' && request.params.name !== 'check_transaction' && request.params.name !== 'get_transaction_history') {
         throw new McpError(
           ErrorCode.MethodNotFound,
           `Unknown tool: ${request.params.name}`
@@ -179,17 +220,15 @@ class SecurePayMcpServer {
         }
 
         try {
-          // First initialize the payment
-          const { messageId } = await client.initPayment(10.00, 'AUD'); // Default amount for testing
-
-          // Then process it with the provided details
-          const paymentResponse = await client.processPayment(
-            messageId,
-            10.00, // Default amount for testing
-            'AUD',
-            request.params.arguments.card,
-            request.params.arguments.billingDetails
-          );
+          const paymentResponse = await client.processPayment({
+            amount: 10.00, // Default amount for testing
+            currency: 'AUD',
+            orderId: request.params.arguments.paymentId,
+            cardNumber: request.params.arguments.card.number,
+            expiryMonth: request.params.arguments.card.expiryMonth,
+            expiryYear: request.params.arguments.card.expiryYear,
+            cvv: request.params.arguments.card.cvv
+          });
 
           return {
             content: [
@@ -206,6 +245,37 @@ class SecurePayMcpServer {
               {
                 type: 'text',
                 text: `Error processing payment: ${error.message}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      } else if (request.params.name === 'process_refund') {
+        if (!isValidProcessRefundArgs(request.params.arguments)) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            'Invalid process_refund arguments'
+          );
+        }
+
+        try {
+          const refundResponse = await client.processRefund(request.params.arguments);
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(refundResponse, null, 2),
+              },
+            ],
+          };
+        } catch (error: any) {
+          console.error('Error processing refund:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error processing refund: ${error.message}`,
               },
             ],
             isError: true,

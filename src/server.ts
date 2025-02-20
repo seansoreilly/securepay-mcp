@@ -1,4 +1,4 @@
-import { SecurePayClient } from './securepay/client';
+import { SecurePayClient } from './lib/securepay/client';
 import { env } from './env';
 
 export class Server {
@@ -17,29 +17,17 @@ export class Server {
 
   async processPayment(amount: number, currency: string) {
     try {
-      console.log(`Initializing payment for ${amount} ${currency}`);
+      console.log(`Processing payment for ${amount} ${currency}`);
 
-      // Step 1: Initialize payment
-      const { messageId } = await this.client.initPayment(amount, currency);
-
-      // Step 2: Process payment with test card
-      const card = {
-        number: '4444333322221111', // Test card number
+      const result = await this.client.processPayment({
+        amount,
+        currency: currency as 'AUD' | 'NZD',
+        orderId: `ORDER-${Date.now()}`,
+        cardNumber: '4444333322221111', // Test card number
         expiryMonth: '12',
         expiryYear: '25',
         cvv: '123'
-      };
-
-      const billingDetails = {
-        name: 'John Smith',
-        street1: '123 Test St',
-        city: 'Sydney',
-        state: 'NSW',
-        postalCode: '2000',
-        country: 'AU'
-      };
-
-      const result = await this.client.processPayment(messageId, amount, currency, card, billingDetails);
+      });
       console.log('Payment completed:', result);
       return result;
     } catch (error) {

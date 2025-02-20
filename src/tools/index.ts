@@ -1,3 +1,4 @@
-// import { processPayment } from './processPayment';
+import { processPayment } from './processPayment';
+import { processRefund } from './processRefund';
 
-// export { processPayment };
+export { processPayment, processRefund };
