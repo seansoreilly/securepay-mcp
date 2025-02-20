@@ -50,3 +50,5 @@ temp/
 # Misc
 .cache/
 .local/ 
+
+package-lock.json

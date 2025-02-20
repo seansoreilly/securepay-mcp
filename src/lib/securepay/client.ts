@@ -1,5 +1,5 @@
 // Implementing SecurePayClient (forced update)
-import { SecurePayConfig, PaymentPayload, RefundPayload, ISecurePayClient } from '../../types/securepay';
+import { SecurePayConfig, PaymentPayload, RefundPayload, ISecurePayClient, TransactionResponse } from '../../types/securepay';
 import { buildPaymentXml, buildRefundXml } from '../xmlBuilder';
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
@@ -30,10 +30,24 @@ export class SecurePayClient implements ISecurePayClient {
     return this.post('/xmlapi/payment', xmlBody);
   }
 
-  async checkTransaction(transactionId: string) {
+  async checkTransaction(transactionId: string): Promise<TransactionResponse> {
     try {
       const response = await this.client.get(`/transaction/${transactionId}`);
-      return response.data;
+      
+      // Ensure we have a valid transaction response
+      if (!response.data || !response.data.id) {
+        throw new Error('Invalid transaction response from SecurePay');
+      }
+
+      return {
+        id: response.data.id,
+        status: response.data.status,
+        amount: response.data.amount,
+        currency: response.data.currency,
+        transactionDate: new Date(response.data.transactionDate),
+        merchantReference: response.data.merchantReference,
+        errorCode: response.data.errorCode
+      };
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new Error(`SecurePay API error: ${error.response?.data || error.message}`);

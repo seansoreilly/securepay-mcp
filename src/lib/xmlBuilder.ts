@@ -36,7 +36,7 @@ export function buildPaymentXml(payload: PaymentPayload, config: SecurePayConfig
             $: { ID: '1' },
             txnType: '0',
             txnSource: '23',
-            amount: String(Math.round(payload.amount * 100)),
+            amount: String(payload.amount), // Pass amount as-is, assuming it's in cents
             currency: payload.currency || 'AUD',
             purchaseOrderNo: payload.orderId,
             CreditCardInfo: {
@@ -64,7 +64,7 @@ export function buildRefundXml(payload: RefundPayload, config: SecurePayConfig) 
             $: { ID: '1' },
             txnType: '4',
             txnSource: '23',
-            amount: String(Math.round(payload.amount * 100)),
+            amount: String(payload.amount), // Pass amount as-is, assuming it's in cents
             currency: payload.currency || 'AUD',
             purchaseOrderNo: payload.orderId,
             txnID: payload.transactionId
