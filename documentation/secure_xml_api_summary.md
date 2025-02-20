@@ -34,14 +34,14 @@ Secure XML API is used to integrate with SecurePay for secure transactions, incl
 - Each merchant has a **unique transaction password** for authentication.
 - **TLS 1.2 or TLS 1.3 is required** (older versions are not supported).
 
-## **Test & Live Environments**
-| Transaction Type | Test URL | Live URL |
-|-----------------|-----------------------------|-----------------------------|
-| Triggered & Scheduled Payments | `https://test.api.securepay.com.au/xmlapi/periodic` | `https://api.securepay.com.au/xmlapi/periodic` |
-| Card Storage (Token) | `https://test.api.securepay.com.au/xmlapi/token` | `https://api.securepay.com.au/xmlapi/token` |
-| Credit Card Payments | `https://test.api.securepay.com.au/xmlapi/payment` | `https://api.securepay.com.au/xmlapi/payment` |
-| Direct Entry Transactions | `https://test.api.securepay.com.au/xmlapi/directentry` | `https://api.securepay.com.au/xmlapi/directentry` |
-| FraudGuard | `https://test.api.securepay.com.au/antifraud/payment` | `https://api.securepay.com.au/antifraud/payment` |
+## **Test Environments**
+| Transaction Type | Test URL |
+|-----------------|----------------------------|
+| Triggered & Scheduled Payments | `https://test.api.securepay.com.au/xmlapi/periodic` |
+| Card Storage (Token) | `https://test.api.securepay.com.au/xmlapi/token` |
+| Credit Card Payments | `https://test.api.securepay.com.au/xmlapi/payment` |
+| Direct Entry Transactions | `https://test.api.securepay.com.au/xmlapi/directentry` |
+| FraudGuard | `https://test.api.securepay.com.au/antifraud/payment` |
 
 ## **XML Message Structure**
 ### **Request Format**
@@ -106,4 +106,3 @@ Use specific amounts to trigger **approved** or **declined** transactions.
 4. **Send transactions via POST to SecurePay**.
 5. **Handle API Responses** and process results.
 6. **Implement security best practices** (TLS 1.2/1.3, password protection).
-7. **Move to Live Environment** once testing is complete.
