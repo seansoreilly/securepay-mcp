@@ -16,12 +16,26 @@ const client = new SecurePayClient(config);
 
 export const processRefund = createTool({
   name: 'process_refund',
-  description: 'Process a refund for a previously settled transaction via SecurePay. Both Transaction ID (<txnID>) and Order ID/Purchase Order Number (<purchaseOrderNo>) must match the original payment transaction.',
+  description: 'Process a refund for a previously settled transaction via SecurePay. BOTH <txnID> and <purchaseOrderNo> MUST MATCH the process_payment <txnID> and <purchaseOrderNo> or the refund will fail.',
   schema: z.object({
-    amount: z.number().positive().describe('Refund amount in cents (must not exceed original transaction amount)'),
-    transactionId: z.string().describe('Transaction ID from the original payment - must match exactly'),
-    currency: z.enum(['AUD', 'NZD']).optional().describe('Currency code (defaults to AUD)'),
-    orderId: z.string().describe('Order ID/Purchase Order Number from the original payment - must match exactly'),
+    amount: z.number()
+      .int()
+      .positive()
+      .describe(
+        'Amount in cents (NOT dollars). Examples:\n' +
+        '- $10.00 = 1000 cents\n' +
+        '- $5.99 = 599 cents\n' +
+        '- $100.00 = 10000 cents\n' +
+        '- $0.01 = 1 cent\n' +
+        'Must not exceed original transaction amount.'
+      ),
+    transactionId: z.string()
+      .describe('Transaction ID from the original payment - must match exactly'),
+    currency: z.enum(['AUD', 'NZD'])
+      .optional()
+      .describe('Currency code (defaults to AUD)'),
+    orderId: z.string()
+      .describe('Order ID/Purchase Order Number from the original payment - must match exactly'),
   }),
   async handler({ input }: { input: RefundPayload }) {
     // First verify the transaction exists and matches the order ID

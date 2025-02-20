@@ -8,7 +8,14 @@ export interface SecurePayConfig {
 }
 
 export type PaymentPayload = {
-  /** Amount in cents. For example, $10.00 should be passed as 1000 */
+  /**
+   * Amount in cents (NOT dollars).
+   * Examples:
+   * - $10.00 = 1000 cents
+   * - $5.99 = 599 cents
+   * - $100.00 = 10000 cents
+   * - $0.01 = 1 cent
+   */
   amount: number;
   cardNumber: string;
   expiryMonth: string;
@@ -19,7 +26,14 @@ export type PaymentPayload = {
 };
 
 export type RefundPayload = {
-  /** Amount in cents. For example, $10.00 should be passed as 1000 */
+  /**
+   * Amount in cents (NOT dollars).
+   * Examples:
+   * - $10.00 = 1000 cents
+   * - $5.99 = 599 cents
+   * - $100.00 = 10000 cents
+   * - $0.01 = 1 cent
+   */
   amount: number;
   transactionId: string;
   currency?: 'AUD' | 'NZD';
