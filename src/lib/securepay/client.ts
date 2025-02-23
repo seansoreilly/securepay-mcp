@@ -81,10 +81,7 @@ export class SecurePayClient implements ISecurePayClient {
 
   private async post(endpoint: string, body: string, retryCount = 0): Promise<any> {
     try {
-      console.log(`Request XML (attempt ${retryCount + 1}):`, body);
-      
       const response = await this.client.post(endpoint, body);
-      console.log('Response:', response.data);
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -95,9 +92,6 @@ export class SecurePayClient implements ISecurePayClient {
            error.code === 'ECONNABORTED') && 
           retryCount < MAX_RETRIES
         ) {
-          console.log(`Network error encountered:`, error.message);
-          console.log(`Base URL being used:`, this.config.baseUrl);
-          console.log(`Retrying request in ${RETRY_DELAY * (retryCount + 1)}ms (attempt ${retryCount + 1} of ${MAX_RETRIES})...`);
           await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
           return this.post(endpoint, body, retryCount + 1);
         }

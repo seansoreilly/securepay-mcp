@@ -17,8 +17,6 @@ export class Server {
 
   async processPayment(amount: number, currency: string) {
     try {
-      console.log(`Processing payment for ${amount} ${currency}`);
-
       const result = await this.client.processPayment({
         amount,
         currency: currency as 'AUD' | 'NZD',
@@ -28,22 +26,18 @@ export class Server {
         expiryYear: '25',
         cvv: '123'
       });
-      console.log('Payment completed:', result);
       return result;
     } catch (error) {
-      console.error('Payment failed:', error);
       throw error;
     }
   }
 
   async start() {
-    console.log('SecurePay MCP Server started');
-    
     try {
       // Process a $10 AUD payment
       await this.processPayment(10.00, 'AUD');
     } catch (error) {
-      console.error('Server error:', error);
+      throw error;
     }
   }
 }

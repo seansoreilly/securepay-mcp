@@ -23,6 +23,7 @@ const client = new SecurePayClient({
 
 const isValidProcessPaymentArgs = (args: any): args is {
   paymentId: string;
+  amount: number;
   card: {
     number: string;
     expiryMonth: string;
@@ -42,6 +43,7 @@ const isValidProcessPaymentArgs = (args: any): args is {
   return typeof args === 'object' &&
     args !== null &&
     typeof args.paymentId === 'string' &&
+    typeof args.amount === 'number' &&
     typeof args.card === 'object' &&
     args.card !== null &&
     typeof args.card.number === 'string' &&
@@ -91,7 +93,10 @@ class SecurePayMcpServer {
 
     this.setupToolHandlers();
 
-    this.server.onerror = (error) => console.error('[MCP Error]', error);
+    this.server.onerror = (error) => {
+      // Handle errors through MCP error system
+      throw new McpError(ErrorCode.InternalError, error.message);
+    };
     process.on('SIGINT', async () => {
       await this.server.close();
       process.exit(0);
@@ -110,6 +115,10 @@ class SecurePayMcpServer {
               paymentId: {
                 type: 'string',
                 description: 'Payment ID',
+              },
+              amount: {
+                type: 'number',
+                description: 'Payment amount in cents (e.g., $10.00 = 1000 cents, $5.99 = 599 cents)',
               },
               card: {
                 type: 'object',
@@ -170,7 +179,7 @@ class SecurePayMcpServer {
                 required: ['name', 'street1', 'city', 'state', 'postalCode', 'country'],
               },
             },
-            required: ['paymentId', 'card', 'billingDetails'],
+            required: ['paymentId', 'amount', 'card', 'billingDetails'],
           },
         },
         {
@@ -185,7 +194,7 @@ class SecurePayMcpServer {
               },
               amount: {
                 type: 'number',
-                description: 'Amount to refund',
+                description: 'Amount to refund in cents (e.g., $10.00 = 1000 cents, $5.99 = 599 cents)',
               },
               currency: {
                 type: 'string',
@@ -221,7 +230,7 @@ class SecurePayMcpServer {
 
         try {
           const paymentResponse = await client.processPayment({
-            amount: 10.00, // Default amount for testing
+            amount: request.params.arguments.amount,
             currency: 'AUD',
             orderId: request.params.arguments.paymentId,
             cardNumber: request.params.arguments.card.number,
@@ -239,7 +248,6 @@ class SecurePayMcpServer {
             ],
           };
         } catch (error: any) {
-          console.error('Error processing payment:', error);
           return {
             content: [
               {
@@ -259,7 +267,9 @@ class SecurePayMcpServer {
         }
 
         try {
-          const refundResponse = await client.processRefund(request.params.arguments);
+          const refundResponse = await client.processRefund({
+            ...request.params.arguments
+          });
 
           return {
             content: [
@@ -270,7 +280,6 @@ class SecurePayMcpServer {
             ],
           };
         } catch (error: any) {
-          console.error('Error processing refund:', error);
           return {
             content: [
               {
@@ -317,9 +326,11 @@ class SecurePayMcpServer {
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error('SecurePay MCP server running on stdio');
+    // Server is now running
   }
 }
 
 const server = new SecurePayMcpServer();
-server.run().catch(console.error);
+server.run().catch((error) => {
+  throw new McpError(ErrorCode.InternalError, error.message);
+});
