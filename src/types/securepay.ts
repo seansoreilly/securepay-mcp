@@ -40,7 +40,13 @@ export type RefundPayload = {
   orderId: string;
 };
 
+export type CustomXmlRequestPayload = {
+  xmlPayload: string;
+  endpoint?: string;
+};
+
 export interface ISecurePayClient {
+  sendCustomXmlRequest(payload: CustomXmlRequestPayload): Promise<string>;
   processPayment(payload: PaymentPayload): Promise<string>;
   processRefund(payload: RefundPayload): Promise<string>;
   checkTransaction(transactionId: string): Promise<TransactionResponse>;

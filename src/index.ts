@@ -11,6 +11,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { SecurePayClient } from './lib/securepay/client';
 import { env } from './env';
+import { customXmlRequest } from './tools/customXmlRequest';
 
 const client = new SecurePayClient({
   merchantId: env.SECUREPAY_MERCHANT_ID,
@@ -60,6 +61,16 @@ const isValidProcessPaymentArgs = (args: any): args is {
     typeof args.billingDetails.country === 'string';
 };
 
+const isValidCustomXmlRequestArgs = (args: any): args is {
+  xmlPayload: string;
+  endpoint?: string;
+} => {
+  return typeof args === 'object' &&
+    args !== null &&
+    typeof args.xmlPayload === 'string' &&
+    (args.endpoint === undefined || typeof args.endpoint === 'string');
+};
+
 const isValidProcessRefundArgs = (args: any): args is {
   transactionId: string;
   amount: number;
@@ -106,6 +117,38 @@ class SecurePayMcpServer {
   private setupToolHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
+        {
+          name: 'custom_xml_request',
+          description: 'Send a custom XML request to the SecurePay API',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              xmlPayload: {
+                type: 'string',
+                description: 'The complete XML payload to send to SecurePay'
+              },
+              endpoint: {
+                type: 'string',
+                description: 'The API endpoint to send the request to (defaults to /xmlapi/payment)'
+              }
+            },
+            required: ['xmlPayload']
+          }
+        },
+        {
+          name: 'test_echo',
+          description: 'Simple test echo function',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              message: {
+                type: 'string',
+                description: 'Message to echo back'
+              }
+            },
+            required: ['message']
+          }
+        },
         {
           name: 'process_payment',
           description: 'Process a payment with credit card details',
@@ -213,14 +256,24 @@ class SecurePayMcpServer {
     }));
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      if (request.params.name !== 'process_payment' && request.params.name !== 'process_refund' && request.params.name !== 'check_transaction' && request.params.name !== 'get_transaction_history') {
+      if (request.params.name !== 'process_payment' && request.params.name !== 'process_refund' && request.params.name !== 'test_echo' && request.params.name !== 'check_transaction' && request.params.name !== 'get_transaction_history' && request.params.name !== 'custom_xml_request') {
         throw new McpError(
           ErrorCode.MethodNotFound,
           `Unknown tool: ${request.params.name}`
         );
       }
 
-      if (request.params.name === 'process_payment') {
+      if (request.params.name === 'test_echo') {
+        const message = request.params.arguments?.message || 'No message provided';
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Echo: ${message}`,
+            },
+          ],
+        };
+      } else if (request.params.name === 'process_payment') {
         if (!isValidProcessPaymentArgs(request.params.arguments)) {
           throw new McpError(
             ErrorCode.InvalidParams,
@@ -285,6 +338,39 @@ class SecurePayMcpServer {
               {
                 type: 'text',
                 text: `Error processing refund: ${error.message}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      } else if (request.params.name === 'custom_xml_request') {
+        if (!isValidCustomXmlRequestArgs(request.params.arguments)) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            'Invalid custom_xml_request arguments'
+          );
+        }
+
+        try {
+          const response = await client.sendCustomXmlRequest({
+            xmlPayload: request.params.arguments.xmlPayload,
+            endpoint: request.params.arguments.endpoint
+          });
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: response,
+              },
+            ],
+          };
+        } catch (error: any) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error sending custom XML request: ${error.message}`,
               },
             ],
             isError: true,

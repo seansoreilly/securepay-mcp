@@ -1,7 +1,17 @@
 // Implementing SecurePayClient (forced update)
-import { SecurePayConfig, PaymentPayload, RefundPayload, ISecurePayClient, TransactionResponse } from '../../types/securepay';
+import { SecurePayConfig, PaymentPayload, RefundPayload, CustomXmlRequestPayload, ISecurePayClient, TransactionResponse } from '../../types/securepay';
 import { buildPaymentXml, buildRefundXml } from '../xmlBuilder';
 import axios, { AxiosInstance, AxiosError } from 'axios';
+
+// Helper function to validate XML
+function validateXml(xml: string): boolean {
+  return (
+    xml.includes('<SecurePayMessage>') &&
+    xml.includes('</SecurePayMessage>') &&
+    xml.includes('<MessageInfo>') &&
+    xml.includes('<MerchantInfo>')
+  );
+}
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
@@ -79,7 +89,18 @@ export class SecurePayClient implements ISecurePayClient {
     }
   }
 
-  private async post(endpoint: string, body: string, retryCount = 0): Promise<any> {
+  async sendCustomXmlRequest(payload: CustomXmlRequestPayload): Promise<string> {
+    const endpoint = payload.endpoint || '/xmlapi/payment';
+    try {
+      const response = await this.post(endpoint, payload.xmlPayload);
+      return response;
+    } catch (error) {
+      console.error('Error sending custom XML request:', error);
+      throw error;
+    }
+  }
+
+  protected async post(endpoint: string, body: string, retryCount = 0): Promise<any> {
     try {
       const response = await this.client.post(endpoint, body);
       return response.data;
