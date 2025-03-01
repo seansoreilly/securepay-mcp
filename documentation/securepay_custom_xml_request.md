@@ -4,12 +4,54 @@
 
 The SecurePay MCP server provides a `custom_xml_request` tool that allows for sending arbitrary XML payloads to the SecurePay API. This enables flexible interactions with the SecurePay system beyond the standard payment and refund operations.
 
+## ⚠️ CRITICAL REQUIREMENT: PASSWORD ELEMENT
+
+> **EVERY XML REQUEST MUST INCLUDE A `<password>` ELEMENT**
+>
+> The `<password>` element within the `<MerchantInfo>` section is **MANDATORY** for all SecurePay XML requests.
+>
+> Requests without a password element will be **REJECTED**.
+
 ## Tool Definition
 
 The `custom_xml_request` tool is defined with the following parameters:
 
-- **xmlPayload** (required): The complete XML payload to send to SecurePay. Must follow SecurePay XML format with SecurePayMessage, MessageInfo, and MerchantInfo elements.
+- **xmlPayload** (required): The complete XML payload to send to SecurePay. Must follow SecurePay XML format with SecurePayMessage, MessageInfo, and MerchantInfo elements. **IMPORTANT: The `<password>` element is required in each request within the MerchantInfo section.**
 - **endpoint** (optional): The API endpoint to send the request to. Defaults to "/xmlapi/payment". Other common endpoints include "/xmlapi/directentry", "/xmlapi/periodic", "/xmlapi/token".
+
+## XML Structure Requirements
+
+Every XML request to SecurePay must include:
+
+1. `<SecurePayMessage>` as the root element
+2. `<MessageInfo>` section with message details
+3. `<MerchantInfo>` section containing merchant identification
+4. **`<password>` element within the MerchantInfo section (THIS IS MANDATORY FOR ALL REQUESTS)**
+
+Example of the required structure:
+
+```xml
+<SecurePayMessage>
+  <MessageInfo>
+    <messageID>uniqueMessageID</messageID>
+    <messageTimestamp>20230101123000000+660</messageTimestamp>
+    <timeoutValue>60</timeoutValue>
+    <apiVersion>spxml-3.0</apiVersion>
+  </MessageInfo>
+  <MerchantInfo>
+    <merchantID>your-merchant-id</merchantID>
+    <password>your-password</password>  <!-- THIS ELEMENT IS MANDATORY -->
+  </MerchantInfo>
+  <!-- Other request elements -->
+</SecurePayMessage>
+```
+
+## Common Errors
+
+| Error            | Cause                                                   | Solution                                                       |
+| ---------------- | ------------------------------------------------------- | -------------------------------------------------------------- |
+| MISSING PASSWORD | The XML payload does not include a `<password>` element | Add a `<password>` element within the `<MerchantInfo>` section |
+| Invalid XML      | Missing other required elements                         | Ensure all required elements are present in the XML            |
 
 ## Implementation
 
