@@ -1,4 +1,20 @@
 #!/usr/bin/env node
+
+/**
+ * SecurePay MCP Server
+ * 
+ * This server provides API integration with SecurePay payment gateway.
+ * 
+ * For usage instructions, refer to:
+ * - instructions.md in project root
+ * - QUICKSTART_SECUREPAY.md for detailed examples and API reference
+ * 
+ * Important notes:
+ * - Payment amounts are always in CENTS (not dollars)
+ * - For refunds, the purchase order must match the original transaction
+ * - Use process_payment function for standard payments
+ * - Use custom_xml_request for advanced operations
+ */
 import * as dotenv from 'dotenv';
 dotenv.config();
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -117,6 +133,15 @@ class SecurePayMcpServer {
   private setupToolHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
+          {
+            name: 'securepay_help',
+            description: 'Display SecurePay MCP Server usage documentation',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+              required: []
+            }
+          },
         {
           name: 'custom_xml_request',
           description: 'Send a custom XML request to the SecurePay API',
@@ -256,14 +281,71 @@ class SecurePayMcpServer {
     }));
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      if (request.params.name !== 'process_payment' && request.params.name !== 'process_refund' && request.params.name !== 'test_echo' && request.params.name !== 'check_transaction' && request.params.name !== 'get_transaction_history' && request.params.name !== 'custom_xml_request') {
+      if (request.params.name !== 'process_payment' && request.params.name !== 'process_refund' && request.params.name !== 'test_echo' && request.params.name !== 'check_transaction' && request.params.name !== 'get_transaction_history' && request.params.name !== 'custom_xml_request' && request.params.name !== 'securepay_help') {
         throw new McpError(
           ErrorCode.MethodNotFound,
           `Unknown tool: ${request.params.name}`
         );
       }
 
-      if (request.params.name === 'test_echo') {
+      if (request.params.name === 'securepay_help') {
+        // Provide documentation when user calls securepay_help
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `
+# SecurePay MCP Quick Start Guide
+
+## Available Functions
+
+### 1. Process Payment
+Process a credit card payment with SecurePay.
+
+\`\`\`javascript
+process_payment({
+  amount: 1000,        // Amount in CENTS (not dollars)
+  cardNumber: "4444333322221111",
+  expiryMonth: "08", 
+  expiryYear: "25",    // 2-digit year
+  cvv: "123",
+  currency: "AUD",     // "AUD" or "NZD"
+  orderId: "ORDER-123" // Your reference for this transaction
+})
+\`\`\`
+
+### 2. Custom XML Request
+Send a custom XML payload for more advanced operations.
+
+\`\`\`javascript
+custom_xml_request({
+  endpoint: "/xmlapi/payment", // Can also be "/xmlapi/directentry", "/xmlapi/periodic", "/xmlapi/token"
+  xmlPayload: "<SecurePayMessage>...</SecurePayMessage>"
+})
+\`\`\`
+
+## Important Notes
+
+1. **Amounts are in CENTS** - $10.00 = 1000 cents
+2. **Test card number**: 4444333322221111
+3. **Test environment credentials**:
+   - Merchant ID: ABC0001
+   - Password: abc123
+   
+4. **Test approval/decline amounts**:
+   - Approval: Use amounts ending in 00, 08, 11, or 16 (e.g., 100, 1008)
+   - Decline: Use other amount values
+
+5. **For refunds**:
+   - The purchase order number (orderId) must match the original transaction
+   - You need the original transaction ID
+
+For XML templates and more details, see QUICKSTART_SECUREPAY.md in the project root.
+              `,
+            },
+          ],
+        };
+      } else if (request.params.name === 'test_echo') {
         const message = request.params.arguments?.message || 'No message provided';
         return {
           content: [
